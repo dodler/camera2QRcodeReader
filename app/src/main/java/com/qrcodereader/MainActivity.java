@@ -44,6 +44,7 @@ public class MainActivity extends FragmentActivity {
         if (savedInstanceState == null) {
             FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
             fragmentTransaction.addToBackStack(null);
+            FrameAsyncSender frameAsyncSender = new FrameAsyncSender();
             fragmentTransaction.replace(layout.getId(), new FragmentDecoder());
             fragmentTransaction.commit();
         }

@@ -1,5 +1,7 @@
 package com.qrcodereader;
 
+import android.util.Log;
+
 import com.google.zxing.LuminanceSource;
 
 

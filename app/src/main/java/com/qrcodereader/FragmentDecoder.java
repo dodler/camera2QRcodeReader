@@ -2,6 +2,8 @@ package com.qrcodereader;
 
 import android.app.Fragment;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Rect;
@@ -21,6 +23,7 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.support.annotation.MainThread;
 import android.support.v13.app.FragmentCompat;
 import android.util.Log;
 import android.util.Size;
@@ -33,12 +36,12 @@ import android.view.Window;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.ReaderException;
 import com.google.zxing.Result;
-import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
 
+import org.json.JSONException;
+
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +50,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+
+import static artyom.lyan.sbt.ru.fr.rest.SenderThread.*;
 
 import static android.hardware.camera2.CameraCharacteristics.LENS_FACING;
 import static android.hardware.camera2.CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP;
@@ -82,6 +87,11 @@ import static android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE;
 public class FragmentDecoder extends Fragment
         implements FragmentCompat.OnRequestPermissionsResultCallback {
     private static final int sImageFormat = ImageFormat.YUV_420_888;
+    private final FrameAsyncSender sender;
+
+    public FragmentDecoder(){
+        this.sender = new FrameAsyncSender();
+    }
 
     private RelativeLayout layout;
     public static boolean accessGranted = true;
@@ -152,21 +162,33 @@ public class FragmentDecoder extends Fragment
                     Result rawResult = null;
                     try {
                         if (img == null) throw new NullPointerException("cannot be null");
+
+
                         ByteBuffer buffer = img.getPlanes()[0].getBuffer();
                         byte[] data = new byte[buffer.remaining()];
                         buffer.get(data);
-                        int width = img.getWidth();
-                        int height = img.getHeight();
-                        PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(data, width, height);
-                        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
 
-                        rawResult = mQrReader.decode(bitmap);
-                        onQRCodeRead(rawResult.getText());
-                    } catch (ReaderException ignored) {
-                        Log.e(TAG, "Reader shows an exception! ", ignored);
-                        /* Ignored */
+                        final Bitmap bitmap =
+                                BitmapFactory.decodeByteArray(data, 0, data.length);
+
+                        FrameAsyncSender.RequestResult requestResult = sender.sendRequest(bitmap);
+                        Log.d(MainActivity.TAG, requestResult.status);
+//                        int width = img.getWidth();
+//                        int height = img.getHeight();
+//                        PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(data, width, height);
+//                        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+//
+//                        rawResult = mQrReader.decode(bitmap);
+//                        onQRCodeRead(rawResult.getText());
+//                    } catch (ReaderException ignored) {
+//                        Log.e(TAG, "Reader shows an exception! ", ignored);
+//                        /* Ignored */
                     } catch (NullPointerException ex) {
                         ex.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     } finally {
                         mQrReader.reset();
                         Log.e(TAG, "in the finally! ------------");
